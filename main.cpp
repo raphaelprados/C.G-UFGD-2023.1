@@ -1,16 +1,4 @@
-/*
- * GLUT Shapes Demo
- *
- * Written by Nigel Stewart November 2003
- *
- * This program is test harness for the sphere, cone
- * and torus shapes in GLUT.
- *
- * Spinning wireframe and smooth shaded shapes are
- * displayed until the ESC or q key is pressed.  The
- * number of geometry stacks and slices can be adjusted
- * using the + and - keys.
- */
+
 
 #ifdef __APPLE__
 #include <GLUT/glut.h>
@@ -19,11 +7,99 @@
 #endif
 
 #include <stdlib.h>
+#include <vector>
+#include <string>
+#include <cmath>
 
 static int slices = 16;
 static int stacks = 16;
 
 /* GLUT callback Handlers */
+
+class Face {
+private:
+    float bl,   // Bottom left
+          br,   // Bottom right
+          tl,   // Top left
+          tr;   // Top right
+public:
+    Face(float bl, float br, float tl, float tr) {
+        this.bl = bl;
+        this.br = br;
+        this.tl = tl;
+        this.tr = tr;
+    }
+};
+
+class Cuboid {
+private:
+    Face f_front,
+         f_back,
+         f_bottom,
+         f_top,
+         f_left,
+         f_right;
+    std::vector<*Cuboid> joints;
+public:
+    Cuboid(float height, float width, float length, std::string type) {
+        switch(type) {
+            case "head":
+                break;
+            case "chest":
+                break;
+            case "arm":
+                break;
+            case "forearm":
+                break;
+            case "upper_leg":
+                break;
+            case "lower_leg":
+                break;
+        }
+    }
+
+    void m_move() {
+
+    }
+};
+
+class Dummy{
+private:
+    Cuboid chest,
+           left_arm,
+           left_forearm,
+           right_arm,
+           right_forearm,
+           head,
+           upper_right_leg,
+           lower_right_leg,
+           upper_left_leg,
+           lower_left_leg;
+public:
+    Dummy() {
+
+    }
+
+    void walk() {
+
+    }
+
+    void turn() {
+
+    }
+
+    void jump() {
+
+    }
+
+    void look_up() {
+
+    }
+
+    void look_down() {
+
+    }
+};
 
 static void resize(int width, int height)
 {
