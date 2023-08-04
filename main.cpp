@@ -1,5 +1,4 @@
 
-
 #ifdef __APPLE__
 #include <GLUT/glut.h>
 #else
@@ -11,23 +10,37 @@
 #include <string>
 #include <cmath>
 
-static int slices = 16;
-static int stacks = 16;
+#define POINTS 4
 
-/* GLUT callback Handlers */
+struct Point {
+    float x, y, z;
+};
 
 class Face {
 private:
-    float bl,   // Bottom left
-          br,   // Bottom right
-          tl,   // Top left
-          tr;   // Top right
+    Point points[POINTS];   // Top right
 public:
-    Face(float bl, float br, float tl, float tr) {
-        this.bl = bl;
-        this.br = br;
-        this.tl = tl;
-        this.tr = tr;
+    Face(Point bl, Point br, Point tl, Point tr) {
+        this->points[0] = bl;
+        this->points[1] = br;
+        this->points[2] = tl;
+        this->points[3] = tr;
+    }
+
+    Face() {
+        this->points[0] = {0.0f, 0.0f, 0.0f};
+        this->points[1] = {0.0f, 0.0f, 0.0f};
+        this->points[2] = {0.0f, 0.0f, 0.0f};
+        this->points[3] = {0.0f, 0.0f, 0.0f};
+    }
+
+    void draw() {
+        glBegin(GL_POLYGON);
+            glVertex3f(points[0].x, points[0].y, points[0].z);
+            glVertex3f(points[1].x, points[1].y, points[1].z);
+            glVertex3f(points[2].x, points[2].y, points[2].z);
+            glVertex3f(points[3].x, points[3].y, points[3].z);
+        glEnd();
     }
 };
 
@@ -39,26 +52,52 @@ private:
          f_top,
          f_left,
          f_right;
-    std::vector<*Cuboid> joints;
+    std::string type;
+    std::vector<Cuboid*> joints;
 public:
     Cuboid(float height, float width, float length, std::string type) {
-        switch(type) {
-            case "head":
-                break;
-            case "chest":
-                break;
-            case "arm":
-                break;
-            case "forearm":
-                break;
-            case "upper_leg":
-                break;
-            case "lower_leg":
-                break;
-        }
+        // Face(float bl, float br, float tl, float tr)
+        std::vector<Point> pts{{0.0f, 0.0f, length}, {width, 0.0f, length}, {0.0f, height, length}, {height, width, length}};
+        f_front = Face(pts[0], pts[1], pts[2], pts[3]);
+        pts = {{0.0f, 0.0f, 0}, {width, 0.0f, 0}, {0.0f, height, 0}, {height, width, 0}};
+        f_back = Face(pts[0], pts[1], pts[2], pts[3]);
+        pts = {{0.0f, 0.0f, 0}, {width, 0.0f, 0}, {0.0f, height, 0}, {height, width, 0}};
+        f_bottom = Face(pts[0], pts[1], pts[2], pts[3]);
+        pts = {{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, length}, {width, 0.0f, 0.0f}, {0.0f, width, length}};
+        f_top = Face(pts[0], pts[1], pts[2], pts[3]);
+        pts = {{0.0f, height, 0.0f}, {0.0f, height, length}, {width, height, 0.0f}, {width, height, length}};
+        f_left = Face(pts[0], pts[1], pts[2], pts[3]);
+        pts = {{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, length},{0.0f, height, 0.0f}, {0.0f, height, length}};
+        f_right = Face(pts[0], pts[1], pts[2], pts[3]);
     }
 
-    void m_move() {
+    Cuboid() {
+        f_front = Face({1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f});
+        f_back = Face({1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f});
+        f_bottom = Face({1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f});
+        f_top = Face({1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f});
+        f_left = Face({1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f});
+        f_right = Face({1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f});
+    }
+
+    void draw() {
+        float colors[3];
+        colors[0] = static_cast <float>(rand()) / static_cast <float> (RAND_MAX);
+        colors[1] = static_cast <float>(rand()) / static_cast <float> (RAND_MAX);
+        colors[2] = static_cast <float>(rand()) / static_cast <float> (RAND_MAX);
+        f_front.draw();
+        f_back.draw();
+        f_bottom.draw();
+        f_top.draw();
+        f_left.draw();
+        f_right.draw();
+    }
+
+    void link(Cuboid &cbd) {
+
+    }
+
+    void f_move(std::string face, Point d_bl, Point d_br, Point d_tl, Point d_tr) {
 
     }
 };
@@ -66,19 +105,47 @@ public:
 class Dummy{
 private:
     Cuboid chest,
+           head,
            left_arm,
            left_forearm,
            right_arm,
            right_forearm,
-           head,
            upper_right_leg,
            lower_right_leg,
            upper_left_leg,
            lower_left_leg;
 public:
     Dummy() {
-
+        // Builds a dummy with the following dimensions:
+        // Cuboid(float height, float width, float length, std::string type)
+        this->head = Cuboid(20.0f, 20.0f, 10.0f, "head");
+        this->chest = Cuboid(30.0f, 10.0f, 10.0f, "chest");
+        this->left_arm = Cuboid(10.0f, 10.0f, 20.0f, "arm");
+        this->left_forearm = Cuboid(10.0f, 10.0f, 20.0f, "arm");
+        this->right_arm = Cuboid(10.0f, 10.0f, 20.0f, "arm");
+        this->right_forearm = Cuboid(10.0f, 10.0f, 20.0f, "arm");
+        this->upper_left_leg = Cuboid(30.0f, 10.0f, 10.0f, "upper_leg");
+        this->upper_right_leg = Cuboid(30.0f, 10.0f, 10.0f, "upper_leg");
+        this->lower_left_leg = Cuboid(30.0f, 10.0f, 10.0f, "lower_leg");
+        this->lower_right_leg = Cuboid(30.0f, 10.0f, 10.0f, "lower_leg");
     }
+
+    // Funções de Impressão
+
+    void draw() {
+        this->head.draw();
+        this->chest.draw();
+        this->left_arm.draw();
+        this->left_forearm.draw();
+        this->right_arm.draw();
+        this->right_forearm.draw();
+        this->upper_left_leg.draw();
+        this->upper_right_leg .draw();
+        this->lower_left_leg.draw();
+        this->lower_right_leg.draw();
+    }
+
+    // Funções de movimento
 
     void walk() {
 
@@ -101,8 +168,9 @@ public:
     }
 };
 
-static void resize(int width, int height)
-{
+Dummy dm = Dummy();
+
+static void resize(int width, int height) {
     const float ar = (float) width / (float) height;
 
     glViewport(0, 0, width, height);
@@ -114,80 +182,18 @@ static void resize(int width, int height)
     glLoadIdentity() ;
 }
 
-static void display(void)
-{
-    const double t = glutGet(GLUT_ELAPSED_TIME) / 1000.0;
-    const double a = t*90.0;
-
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glColor3d(1,0,0);
-
-    glPushMatrix();
-        glTranslated(-2.4,1.2,-6);
-        glRotated(60,1,0,0);
-        glRotated(a,0,0,1);
-        glutSolidSphere(1,slices,stacks);
-    glPopMatrix();
-
-    glPushMatrix();
-        glTranslated(0,1.2,-6);
-        glRotated(60,1,0,0);
-        glRotated(a,0,0,1);
-        glutSolidCone(1,1,slices,stacks);
-    glPopMatrix();
-
-    glPushMatrix();
-        glTranslated(2.4,1.2,-6);
-        glRotated(60,1,0,0);
-        glRotated(a,0,0,1);
-        glutSolidTorus(0.2,0.8,slices,stacks);
-    glPopMatrix();
-
-    glPushMatrix();
-        glTranslated(-2.4,-1.2,-6);
-        glRotated(60,1,0,0);
-        glRotated(a,0,0,1);
-        glutWireSphere(1,slices,stacks);
-    glPopMatrix();
-
-    glPushMatrix();
-        glTranslated(0,-1.2,-6);
-        glRotated(60,1,0,0);
-        glRotated(a,0,0,1);
-        glutWireCone(1,1,slices,stacks);
-    glPopMatrix();
-
-    glPushMatrix();
-        glTranslated(2.4,-1.2,-6);
-        glRotated(60,1,0,0);
-        glRotated(a,0,0,1);
-        glutWireTorus(0.2,0.8,slices,stacks);
-    glPopMatrix();
-
+static void display(void) {
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(0.0f,0.0f,0.0f);
     glutSwapBuffers();
 }
 
-
-static void key(unsigned char key, int x, int y)
-{
+static void key(unsigned char key, int x, int y) {
     switch (key)
     {
         case 27 :
         case 'q':
             exit(0);
-            break;
-
-        case '+':
-            slices++;
-            stacks++;
-            break;
-
-        case '-':
-            if (slices>3 && stacks>3)
-            {
-                slices--;
-                stacks--;
-            }
             break;
     }
 
@@ -199,53 +205,23 @@ static void idle(void)
     glutPostRedisplay();
 }
 
-const GLfloat light_ambient[]  = { 0.0f, 0.0f, 0.0f, 1.0f };
-const GLfloat light_diffuse[]  = { 1.0f, 1.0f, 1.0f, 1.0f };
-const GLfloat light_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-const GLfloat light_position[] = { 2.0f, 5.0f, 5.0f, 0.0f };
-
-const GLfloat mat_ambient[]    = { 0.7f, 0.7f, 0.7f, 1.0f };
-const GLfloat mat_diffuse[]    = { 0.8f, 0.8f, 0.8f, 1.0f };
-const GLfloat mat_specular[]   = { 1.0f, 1.0f, 1.0f, 1.0f };
-const GLfloat high_shininess[] = { 100.0f };
-
 /* Program entry point */
 
 int main(int argc, char *argv[])
 {
     glutInit(&argc, argv);
     glutInitWindowSize(640,480);
-    glutInitWindowPosition(10,10);
+    glutInitWindowPosition(50,50);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
 
-    glutCreateWindow("GLUT Shapes");
+    glutCreateWindow("Trabalho Robô Lab. Computação Gráfica");
 
     glutReshapeFunc(resize);
     glutDisplayFunc(display);
     glutKeyboardFunc(key);
     glutIdleFunc(idle);
 
-    glClearColor(1,1,1,1);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
-
-    glEnable(GL_LIGHT0);
-    glEnable(GL_NORMALIZE);
-    glEnable(GL_COLOR_MATERIAL);
-    glEnable(GL_LIGHTING);
-
-    glLightfv(GL_LIGHT0, GL_AMBIENT,  light_ambient);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE,  light_diffuse);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
-    glLightfv(GL_LIGHT0, GL_POSITION, light_position);
-
-    glMaterialfv(GL_FRONT, GL_AMBIENT,   mat_ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE,   mat_diffuse);
-    glMaterialfv(GL_FRONT, GL_SPECULAR,  mat_specular);
-    glMaterialfv(GL_FRONT, GL_SHININESS, high_shininess);
+    glClearColor(1.0f,1.0f,1.0f,1.0f);
 
     glutMainLoop();
 
