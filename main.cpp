@@ -22,6 +22,10 @@ struct Point {
     float x, y, z;
 };
 
+struct RotationInfo {
+    float deg, x, y, z;
+};
+
 class Face {
 private:
     Point points[POINTS];   // Top right
@@ -56,11 +60,13 @@ public:
     }
 };
 
+// Could be better structured, but this implementation allows for better readability
 struct transformation {
     char tp;            // Type
     // For rotations
     float deg;          // Degree
     float total_deg;    // Total degree variation
+    Point ax;          // Rotation axis
     // For translations
     Point d;
 };
@@ -74,16 +80,16 @@ private:
          f_left,
          f_right;
     std::vector<transformation> transfs;    // Vector that stores all transformations
-    std::vector<Cuboid*> joints;
-    std::string type;
+    std::vector<Cuboid*> joints;            // Reference to the other body members
+    std::string type;                       // Shows the member's type
 public:
     // I usually wouldn't use public variables, but time is short and using a getter would make the code harder to read/write
-    Point tf_ref_pt;        // Reference point for transformations
     bool selected = false;
-    Point dims; // Dimensions
+    Point tf_ref_pt;        // Reference point for transformations
+    Point dims;             // Dimensions
 
     Cuboid(float height, float width, float length, std::string type) {
-        dims = {height, width, length};
+        dims = {width, height, length};
         setReferencePoint(width, height, length);
         // Face(float bl, float br, float tl, float tr)
         std::vector<Point> pts{{0.0f, 0.0f, length}, {width, 0.0f, length}, {0.0f, height, length}, {width, height, length}};
@@ -126,6 +132,26 @@ public:
 
     }
 
+    // For lower legs, forearms and head
+    void link(Cuboid *only_member) {
+        joints.push_back(only_member);
+    }
+
+    // For upper legs and arms
+    void link(Cuboid *lower_member, Cuboid *chest) {
+        joints.push_back(chest);
+        joints.push_back(lower_member);
+    }
+
+    // For chest only
+    void link(Cuboid *head, Cuboid *left_arm, Cuboid *right_arm, Cuboid *left_leg, Cuboid *right_leg) {
+        joints.push_back(head);
+        joints.push_back(left_arm);
+        joints.push_back(right_arm);
+        joints.push_back(left_leg);
+        joints.push_back(right_leg);
+    }
+
     void setReferencePoint(float x, float y, float z) {
         if(type == "head" || type == "chest")
             tf_ref_pt = {dims.x/2, 0.0f, dims.z/2};
@@ -137,12 +163,21 @@ public:
 
     void pushActMx() {
         glPushMatrix();
-        for(transformation tf : transfs)
-            if(tf.tp = 't')
-                glTranslatef(tf_ref_pt.x, tf_ref_pt.y, tf_ref_pt.z);
-        for(transformation tf : transfs)
-            if(tf.tp = 'r')
-                glRotatef(tf.deg, tf_ref_pt.x, tf_ref_pt.y, tf_ref_pt.z);
+        if(type == "right_forearm" || type == "left_forearm" || type == "lower_right_leg" || type == "lower_left_leg") {
+            glTranslatef(dims.x, dims.y + joints[1].dims.y, 0.0f);          // Returns to origin
+            for(transformation tf : transfs)                                // Translation loop
+                if(tf.tp = 't')
+                    glTranslatef(tf_ref_pt.x, tf_ref_pt.y, tf_ref_pt.z);
+            for(transformation tf : transfs)                                // Rotation loop
+                if(tf.tp = 'r')
+                    glRotatef(deg, 0.0, 0.0, 1.0);
+            glTranslatef(-dims.x, - dims.y - joints[1].dims.y, 0.0f);       // Sets position for rotation
+        } else if(type == "right_arm" || type == "left_arm" || type == "upper_right_leg" || type == "upper_left_leg") {
+            glTranslatef(dims.x, dims.y, 0.0f);
+            for(transformation tf : transfs)
+                glRotatef(deg, 0.0, 0.0, 1.0);
+            glTranslatef(-dims.x, -dims.y, 0.0f);
+        }
     }
 
     void popActMx() {
@@ -179,14 +214,28 @@ public:
         // Cuboid(float height, float width, float length, std::string type)
         this->head = Cuboid(10.0f, 10.0f, 5.0f, "head");
         this->chest = Cuboid(20.0f, 12.5f, 5.0f, "chest");
-        this->left_arm = Cuboid(10.0f, 5.0f, 5.0f, "arm");
-        this->left_forearm = Cuboid(10.0f, 5.0f, 5.0f, "arm");
-        this->right_arm = Cuboid(10.0f, 5.0f, 5.0f, "arm");
-        this->right_forearm = Cuboid(10.0f, 5.0f, 5.0f, "arm");
-        this->upper_left_leg = Cuboid(12.5f, 5.0f, 5.0f, "upper_leg");
-        this->upper_right_leg = Cuboid(12.5f, 5.0f, 5.0f, "upper_leg");
-        this->lower_left_leg = Cuboid(12.5f, 5.0f, 5.0f, "lower_leg");
-        this->lower_right_leg = Cuboid(12.5f, 5.0f, 5.0f, "lower_leg");
+        this->left_arm = Cuboid(10.0f, 5.0f, 5.0f, "left_arm");
+        this->left_forearm = Cuboid(10.0f, 5.0f, 5.0f, "left_forearm");
+        this->right_arm = Cuboid(10.0f, 5.0f, 5.0f, "right_arm");
+        this->right_forearm = Cuboid(10.0f, 5.0f, 5.0f, "right_forearm");
+        this->upper_left_leg = Cuboid(12.5f, 5.0f, 5.0f, "upper_left_leg");
+        this->upper_right_leg = Cuboid(12.5f, 5.0f, 5.0f, "upper_right_leg");
+        this->lower_left_leg = Cuboid(12.5f, 5.0f, 5.0f, "lower_left_leg");
+        this->lower_right_leg = Cuboid(12.5f, 5.0f, 5.0f, "lower_right_leg");
+    }
+
+    void setRotationDirection(char key, char part) {
+        transformation tf;
+
+        if(key == 'j') {
+
+        } else if(key == 'l') {
+
+        } else if(key == 'k') {
+
+        } else if(key == 'i') {
+
+        }
     }
 
     void walk_legup() {}
@@ -235,51 +284,131 @@ public:
 
         animate();
 
+        float deg = -45.0f;
+
         // Desenho das pernas
-        glColor3f(1.0f, 0.0f, 0.0f);
         this->lower_left_leg.draw();
         glPushMatrix();
-            glRotatef(0.1f, lower_left_leg.tf_ref_pt.x, lower_left_leg.tf_ref_pt.y, lower_left_leg.tf_ref_pt.z);
             glTranslatef(lower_left_leg.dims.x + (chest.dims.x - 2*lower_left_leg.dims.x),
                          0.0f, 0.0f); // Deslocamento para imprimir perna direita
             this->lower_right_leg.draw();
         glPopMatrix();
+
         // Desenho das coxas
-        glColor3f(1.0f, 0.5f, 0.0f);
         glPushMatrix();
-            glTranslatef(0.0f, upper_left_leg.dims.y, 0.0f); // Deslocamento para imprimir coxa esquerda
+            glTranslatef(0.0f, lower_left_leg.dims.y, 0.0f); // Deslocamento para imprimir coxa esquerda
             this->upper_left_leg.draw();
             glTranslatef(upper_left_leg.dims.x + (chest.dims.x - 2*upper_left_leg.dims.x), 0.0f, 0.0f); // Deslocamento para imprimir coxa direita
             this->upper_right_leg .draw();
         glPopMatrix();
+
+        // Desenho do braço
+        glPushMatrix();
+            glTranslatef(-left_forearm.dims.x, lower_left_leg.dims.y + upper_left_leg.dims.y + left_forearm.dims.y, 0.0f); // Deslocamento para imprimir a partir do cotovelo esquerdo
+            glPushMatrix();
+                /*
+                glTranslatef(left_forearm.dims.x, left_forearm.dims.y, 0.0f);
+                glRotatef(deg, 0.0, 0.0, 1.0);
+                glTranslatef(-left_forearm.dims.x, -left_forearm.dims.y, 0.0f);
+                */
+                this->left_arm.draw();
+            glPopMatrix();
+            glTranslatef(left_forearm.dims.x + chest.dims.x, 0.0f, 0.0f); // Deslocamento para imprimir a partir do cotovelo direito
+            this->right_arm.draw();
+        glPopMatrix();
+
+        // Desenho do antebraco
+        glPushMatrix();
+            glTranslatef(-1*left_forearm.dims.x,
+                         upper_left_leg.dims.y + lower_left_leg.dims.y, 0.0f); // Deslocamento para imprimir a partir da mao esquerda
+            glPushMatrix();
+                /*
+                glTranslatef(left_forearm.dims.x, left_forearm.dims.y + left_arm.dims.y, 0.0f);
+                glRotatef(deg, 0.0, 0.0, 1.0);
+                glTranslatef(-left_forearm.dims.x, -left_forearm.dims.y -left_arm.dims.y, 0.0f);
+                */
+                this->left_forearm.draw();
+            glPopMatrix();
+            glTranslatef(left_forearm.dims.x + chest.dims.x, 0.0f, 0.0f); // Deslocamento para imprimir a partir da mao direita
+            this->right_forearm.draw();
+        glPopMatrix();
+
         // Desenho do torso
         glColor3f(1.0f, 1.0f, 0.0f);
         glPushMatrix();
             glTranslatef(0.0f, upper_left_leg.dims.y + lower_left_leg.dims.y, 0.0f); // Deslocamento para imprimir o torso a partir do canto inferior esquerdo
             this->chest.draw();
         glPopMatrix();
-        // Desenho do braco
-        glColor3f(0.5f, 1.0f, 0.0f);
-        glPushMatrix();
-            glTranslatef(-1*left_forearm.dims.x/2,
-                         upper_left_leg.dims.y + lower_left_leg.dims.y + left_forearm.dims.y, 0.0f); // Deslocamento para imprimir a partir da mao esquerda
-            this->left_forearm.draw();
-            glPushMatrix();
-                glTranslatef(chest.dims.x - right_arm.dims.x/4, 0.0f, 0.0f); // Deslocamento para imprimir a partir da mao direita
-                this->right_forearm.draw();
-            glPopMatrix();
-            glColor3f(0.0f, 1.0f, 0.0f);
-            glTranslatef(0.0f, left_forearm.dims.y, 0.0f); // Deslocamento para imprimir a partir do cotovelo esquerdo
-            this->left_arm.draw();
-            glTranslatef(chest.dims.x - right_arm.dims.x/4, 0.0f, 0.0f); // Deslocamento para imprimir a partir do cotovelo direito
-            this->right_arm.draw();
-        glPopMatrix();
+
         // Desenho da cabeca
         glColor3f(0.0f, 1.0f, 0.5f);
         glPushMatrix();
-            glTranslatef(head.dims.x / 5, lower_left_leg.dims.y + upper_left_leg.dims.y + chest.dims.y + 7.5f, 0.0f); // Deslocamento para imprimir a partir do pescoco pelo lado esquerdo
+            glTranslatef((chest.dims.x - head.dims.x) / 2, lower_left_leg.dims.y + upper_left_leg.dims.y + chest.dims.y, 0.0f); // Deslocamento para imprimir a partir do pescoco pelo lado esquerdo
             this->head.draw();
         glPopMatrix();
+
+    }
+
+    char select(char part) {
+        static std::string member = "none";
+        switch(part) {
+            case '2':
+                std::cout << "Torso selected" << std::endl;
+                chest.selected = true;
+                member = "chest";
+                break;
+            case '0':
+                std::cout << "Head selected" << std::endl;
+                head.selected = true;
+                member = "head";
+                break;
+            case '1':
+                std::cout << "Left arm selected" << std::endl;
+                member = "larm";
+                break;
+            case '3':
+                std::cout << "Right arm selected" << std::endl;
+                member = "rarm";
+                // Select chest
+                break;
+            case '4':
+                std::cout << "Left forearm selected" << std::endl;
+                member = "lfarm";
+                break;
+            case '5':
+                std::cout << "Right forearm selected" << std::endl;
+                member = "rfarm";
+                // Select chest
+                break;
+            case '6':
+                std::cout << "Coxa esquerda selected" << std::endl;
+                member = "ulleg";
+                // Select coxa
+                break;
+            case '7':
+                std::cout << "Coxa direita selected" << std::endl;
+                member = "urleg";
+                // Select coxa
+                break;
+            case '8':
+                std::cout << "Panturrilha esquerda selected" << std::endl;
+                member = "llleg";
+                // Select panturrilha
+                break;
+            case '9':
+                std::cout << "Panturrilha direita selected" << std::endl;
+                member = "lrleg";
+                // Select panturrilha
+                break;
+            case 'n':
+                std::cout << "None selected" << std::endl;
+                member = "none";
+                break;
+        }
+    }
+
+    void setMovement(char key) {
+
     }
 };
 
@@ -314,33 +443,22 @@ static void key(unsigned char key, int x, int y) {
             std::cout << "Starting walk animation" << std::endl;
             // Set walk animation
             break;
-        case 't':
-            std::cout << "Torso selected" << std::endl;
-            // Select chest
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+            dm.select(key);
             break;
-        case 'h':
-            std::cout << "Head selected" << std::endl;
-            // Select chest
-            break;
-        case 'a':
-            std::cout << "Arm selected" << std::endl;
-            // Select chest
-            break;
-        case 'f':
-            std::cout << "Forearm selected" << std::endl;
-            // Select chest
-            break;
-        case 'c':
-            std::cout << "Coxa selected" << std::endl;
-            // Select coxa
-            break;
-        case 'p':
-            std::cout << "Panturrilha selected" << std::endl;
-            // Select panturrilha
-            break;
+        case 'i':
+        case 'j':
+        case 'k':
         case 'l':
-            break;
-        case 'r':
+            dm.setMovement(key);
             break;
     }
 
