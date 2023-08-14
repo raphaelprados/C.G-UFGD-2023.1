@@ -2,9 +2,10 @@
 /*
 
     Universidade Federal da Grande Dourados
+    Faculdade de Ciências Exatas e Tecnologia
     Disciplina: Introdução à Computação Gráfica / Laboratório de Computação Gráfica
     Discente: Raphael Alexsander Prado dos Santos
-    Docente: Adailton Jose da Cruz
+    Docente: Adailton José Alves da Cruz
 
 */
 
@@ -248,6 +249,7 @@ public:
             // Up leaning movement
             if(key == 'i') {
                 if(cur_rotation.x < 360.0f) {
+                    std::cout << "Bar" << std::endl;
                     tf = {'r', mv,  360.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
                     cur_rotation.x += mv;
                 }
@@ -262,7 +264,7 @@ public:
                 // For the right arm or forearm (decreasing angle)
                 else
                     if(cur_rotation.z > 0.0f) {
-                        tf = {'r', mv, 180.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
+                        tf = {'r', -mv, 180.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
                         cur_rotation.z -= mv;
                     }
             // Down leaning movement
@@ -274,22 +276,25 @@ public:
             // Right leaning movement
             } else if(key == 'l') {
                 // For the left arm or forearm (decreasing angle)
-                if(this->type.find("lef") != std::string::npos)
+                if(this->type.find("lef") != std::string::npos) {
                     if(cur_rotation.z < 0.0f) {
                         tf = {'r', mv, -180.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
                         cur_rotation.z += mv;
                     }
+                }
                 // For the right arm or forearm (increasing angle)
-                else
+                else {
                     if(cur_rotation.z < 180.0f) {
-                        tf = {'r', mv, 180.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
+                        std::cout << "Wut" << std::endl;
+                        tf = {'r', +mv, 180.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
                         cur_rotation.z += mv;
                     }
+                }
             } else {
                 return false; // Some function input error occurred
             }
             // Calls for movement on connected member
-            if(this->type.find("for") == std::string::npos)  // is an arm, not a forearm
+            if(this->type.find("for") == std::string::npos)   // is an arm, not a forearm
                 joints[0]->addMovement(key);
 
 
@@ -298,6 +303,7 @@ public:
             // Up leaning movement
             if(key == 'i') {
                 if(cur_rotation.x < 90.0f) {
+                    std::cout << "Here" << std::endl;
                     tf = {'r', mv,  90.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
                     cur_rotation.x += mv;
                 }
@@ -306,7 +312,6 @@ public:
                 // For the left leg or lower leg (increasing angle)
                 if(this->type.find("lef") != std::string::npos)
                     if(cur_rotation.z > -90.0f) {
-                        std::cout << "Here" << std::endl;
                         tf = {'r', -mv, -90.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
                         cur_rotation.z -= mv;
                     }
@@ -330,11 +335,12 @@ public:
                         cur_rotation.z += mv;
                     }
                 // For the right arm or forearm (increasing angle)
-                else
+                else {
                     if(cur_rotation.z < 90.0f) {
                         tf = {'r', mv, 90.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
                         cur_rotation.z += mv;
                     }
+                }
             } else {
                 return false; // Some function input error occurred
             }
@@ -399,7 +405,7 @@ public:
         lower_left_leg.link(&upper_left_leg);
         lower_right_leg.link(&upper_right_leg);
 
-        right_arm.link(&chest, &right_arm);
+        right_arm.link(&chest, &right_forearm);
         left_arm.link(&chest, &left_forearm);
         upper_left_leg.link(&chest, &lower_left_leg);
         upper_right_leg.link(&chest, &lower_right_leg);
@@ -703,9 +709,9 @@ int main(int argc, char *argv[]) {
     glutInitWindowPosition(50,50);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
 
-    glutCreateWindow("Trabalho Robô Lab. Computação Gráfica");
+    glutCreateWindow("Trabalho Robô - Computação Gráfica");
 
-    glutSetKeyRepeat(GLUT_KEY_REPEAT_ON);
+    glutSetKeyRepeat(GLUT_KEY_REPEAT_ON);       // Allows for keeping a key pressed and receive multiple inputs
     glutReshapeFunc(resize);
     glutDisplayFunc(display);
     glutKeyboardFunc(key);
