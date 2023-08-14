@@ -1,16 +1,28 @@
 
+/*
+
+    Universidade Federal da Grande Dourados
+    Disciplina: Introdução à Computação Gráfica / Laboratório de Computação Gráfica
+    Discente: Raphael Alexsander Prado dos Santos
+    Docente: Adailton Jose da Cruz
+
+*/
+
 #ifdef __APPLE__
 #include <GLUT/glut.h>
 #else
 #include <GL/glut.h>
 #endif
 
+// Utils imports
 #include <cstdlib>
 #include <unistd.h>
 #include <vector>
 #include <string>
 #include <cmath>
+#include <map>
 
+// Command prompt imports
 #include <iostream>
 
 #define POINTS 4
@@ -18,12 +30,15 @@
 #define SCREEN_LENGTH 640
 #define SCREEN_HEIGHT 480
 
+
 struct Point {
     float x, y, z;
 };
 
-struct RotationInfo {
-    float deg, x, y, z;
+struct Camera {
+    Point orgn,
+          drct,
+          vect;
 };
 
 class Face {
@@ -55,7 +70,7 @@ public:
             std::cout << points[1].x << " " << points[1].y << " " << points[1].z << std::endl;
             std::cout << points[3].x << " " << points[3].y << " " << points[2].z << std::endl;
             std::cout << points[2].x << " " << points[2].y << " " << points[3].z << std::endl;
-        */
+            */
         glEnd();
     }
 };
@@ -79,18 +94,22 @@ private:
          f_top,
          f_left,
          f_right;
-    std::vector<transformation> transfs;    // Vector that stores all transformations
+    std::vector<transformation> rots;       // Vector that stores all rotations
+    std::vector<transformation> trns;       // Vector that stores all translations
     std::vector<Cuboid*> joints;            // Reference to the other body members
     std::string type;                       // Shows the member's type
+    Point color;                            // Has the color values for the cuboid
+    Point cur_rotation;                     // Stores total current rotation values
 public:
     // I usually wouldn't use public variables, but time is short and using a getter would make the code harder to read/write
     bool selected = false;
-    Point tf_ref_pt;        // Reference point for transformations
     Point dims;             // Dimensions
 
     Cuboid(float height, float width, float length, std::string type) {
+        selected = false;
         dims = {width, height, length};
-        setReferencePoint(width, height, length);
+        this->type = type;
+        std::cout << this->type << std::endl;
         // Face(float bl, float br, float tl, float tr)
         std::vector<Point> pts{{0.0f, 0.0f, length}, {width, 0.0f, length}, {0.0f, height, length}, {width, height, length}};
         f_front = Face(pts[0], pts[1], pts[2], pts[3]);
@@ -105,6 +124,19 @@ public:
         f_left = Face(pts[0], pts[1], pts[2], pts[3]);
         pts = {{width, 0.0f, 0.0f}, {width, 0.0f, length}, {width, height, 0.0f}, {width, height, length}};
         f_right = Face(pts[0], pts[1], pts[2], pts[3]);
+        // Setting body member color
+        if(type == "head")                                  // head
+            color = {1.0, 0.5, 0.0};
+        else if(type.find("for") != std::string::npos)       // forearm
+            color = {1.0, 0.5, 0.0};
+        else if(type.find("arm") != std::string::npos)       // arm
+            color = {1.0, 1.0, 0.0};
+        else if(type.find("chest") != std::string::npos)       // chest
+            color = {0.0, 0.5, 1.0};
+        else if(type.find("up") != std::string::npos)       // upper_leg
+            color = {1.0, 1.0, 0.5};
+        else if(type.find("low") != std::string::npos)       // lower_leg
+            color = {1.0, 0.5, 0.0};
     }
 
     Cuboid() {
@@ -117,10 +149,10 @@ public:
     }
 
     void draw() {
-        float colors[3];
-        colors[0] = static_cast <float>(rand()) / static_cast <float> (RAND_MAX);
-        colors[1] = static_cast <float>(rand()) / static_cast <float> (RAND_MAX);
-        colors[2] = static_cast <float>(rand()) / static_cast <float> (RAND_MAX);
+        if(selected)
+            glColor3f(0.0f, 0.0f, 0.0f);
+        else
+            glColor3f(color.x, color.y, color.z);
         pushActMx();
             f_front.draw();
             f_back.draw();
@@ -129,7 +161,6 @@ public:
             f_left.draw();
             f_right.draw();
         popActMx();
-
     }
 
     // For lower legs, forearms and head
@@ -152,45 +183,156 @@ public:
         joints.push_back(right_leg);
     }
 
-    void setReferencePoint(float x, float y, float z) {
-        if(type == "head" || type == "chest")
-            tf_ref_pt = {dims.x/2, 0.0f, dims.z/2};
-        else if(type == "arm" || type == "forearm")
-            tf_ref_pt = {dims.x, dims.y, dims.z/2};
-        else if(type == "upper_leg" || type == "lower_leg")
-            tf_ref_pt = {dims.x/2, dims.y, dims.z/2};
-    }
-
+    // Pushes all the rotation and translations matrixes for this Cuboid
     void pushActMx() {
         glPushMatrix();
         if(type == "right_forearm" || type == "left_forearm" || type == "lower_right_leg" || type == "lower_left_leg") {
-            glTranslatef(dims.x, dims.y + joints[1].dims.y, 0.0f);          // Returns to origin
-            for(transformation tf : transfs)                                // Translation loop
-                if(tf.tp = 't')
-                    glTranslatef(tf_ref_pt.x, tf_ref_pt.y, tf_ref_pt.z);
-            for(transformation tf : transfs)                                // Rotation loop
-                if(tf.tp = 'r')
-                    glRotatef(deg, 0.0, 0.0, 1.0);
-            glTranslatef(-dims.x, - dims.y - joints[1].dims.y, 0.0f);       // Sets position for rotation
+            glTranslatef(dims.x, dims.y + joints[0]->dims.y, 0.0f);          // Returns to origin
+            for(transformation tf : trns)
+                glTranslatef(tf.d.x, tf.d.y, tf.d.z);                       // Translations
+            for(transformation tf : rots)
+                glRotatef(tf.deg, tf.ax.x, tf.ax.y, tf.ax.z);               // Rotations
+            glTranslatef(-dims.x, - dims.y - joints[0]->dims.y, 0.0f);       // Sets position for rotation
         } else if(type == "right_arm" || type == "left_arm" || type == "upper_right_leg" || type == "upper_left_leg") {
-            glTranslatef(dims.x, dims.y, 0.0f);
-            for(transformation tf : transfs)
-                glRotatef(deg, 0.0, 0.0, 1.0);
-            glTranslatef(-dims.x, -dims.y, 0.0f);
+            glTranslatef(dims.x, dims.y, 0.0f);                             // Returns to origin
+            for(transformation tf : trns)
+                glTranslatef(tf.d.x, tf.d.y, tf.d.z);                       // Translations
+            for(transformation tf : rots)
+                glRotatef(tf.deg, tf.ax.x, tf.ax.y, tf.ax.z);               // Rotations
+            glTranslatef(-dims.x, -dims.y, 0.0f);                           // Sets position for rotation
         }
     }
 
+    // Pops all transformations for this Cuboid
     void popActMx() {
         usleep(10000);
         glPopMatrix();
     }
 
-    bool checkMovement(char type, Point params) {
+    bool addMovement(char key) {
+        // Sets the rotation movement for the head
+        const float mv = 2.0f;
+        transformation tf;
+        std::cout << this->type << std::endl;
+        if(this->type == "head") {
+            if(key == 'i' || key == 'k') {
+                if(key == 'i') {                              // Moving up (eyes looking at the sky)
+                    if(cur_rotation.x < 90.0f) {
+                        tf = {'r', mv, 90.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
+                        cur_rotation.x += mv;
+                    }
+                } else {                                        // Moving down (eyes looking at the floor)
+                    if(cur_rotation.x > -90.0f) {
+                        tf = {'l', -mv, -90.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
+                        cur_rotation.x -= mv;
+                    }
+                }
+                rots.push_back(tf);
+                // Removes all unnecessary rotations
+                // Add code here
+            }
+        // Arms movements
+        } else if(this->type.find("arm") != std::string::npos) {
+            // Up leaning movement
+            if(key == 'i') {
+                if(cur_rotation.x < 360.0f) {
+                    tf = {'r', mv,  360.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
+                    cur_rotation.x += mv;
+                }
+            // Left leaning movement
+            } else if(key == 'j') {
+                // For the left arm or forearm (increasing angle)
+                if(this->type.find("lef") != std::string::npos)
+                    if(cur_rotation.z > -180.0f) {
+                        tf = {'r', mv, -180.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
+                        cur_rotation.x -= mv;
 
-    }
+                    }
+                // For the right arm or forearm (decreasing angle)
+                else
+                    if(cur_rotation.z > 0.0f) {
+                        tf = {'r', mv, 180.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
+                        cur_rotation.x -= mv;
+                    }
+            // Down leaning movement
+            } else if(key == 'k') {
+                if(cur_rotation.x > -360.0f) {
+                    tf = {'r', -mv, -360.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
+                    cur_rotation.x -= mv;
+                }
+            // Right leaning movement
+            } else if(key == 'l') {
+                // For the left arm or forearm (decreasing angle)
+                if(this->type.find("lef") != std::string::npos)
+                    if(cur_rotation.z < 0.0f) {
+                        tf = {'r', mv, -180.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
+                        cur_rotation.x += mv;
+                    }
+                // For the right arm or forearm (increasing angle)
+                else
+                    if(cur_rotation.z < 180.0f) {
+                        tf = {'r', mv, 180.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
+                        cur_rotation.x += mv;
+                    }
+            } else {
+                return false; // Some function input error occurred
+            }
+            rots.push_back(tf);
+            // Removes all unnecessary rotations
+            // Add code here
 
-    void pushAction() {
 
+        // Legs movements
+        } else if(this->type.find("leg") != std::string::npos) {
+            // Up leaning movement
+            if(key == 'i') {
+                if(cur_rotation.x < 90.0f) {
+                    tf = {'r', mv,  90.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
+                    cur_rotation.x += mv;
+                }
+            // Left leaning movement
+            } else if(key == 'j') {
+                // For the left leg or lower leg (increasing angle)
+                if(this->type.find("lef") != std::string::npos)
+                    if(cur_rotation.z > -90.0f) {
+                        tf = {'r', -mv, -90.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
+                        cur_rotation.x -= mv;
+                    }
+                // For the right leg or lower leg (decreasing angle)
+                else
+                    if(cur_rotation.z > 0.0f) {
+                        tf = {'r', -mv, 90.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
+                        cur_rotation.x -= mv;
+                    }
+            } else if(key == 'k') {
+                if(cur_rotation.x > -90.0f) {
+                    tf = {'r', mv, -90.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
+                    cur_rotation.x -= mv;
+                }
+            // Right leaning movement
+            } else if(key == 'l') {
+                // For the left arm or forearm (decreasing angle)
+                if(this->type.find("lef") != std::string::npos)
+                    if(cur_rotation.z < 0.0) {
+                        tf = {'r', mv, -90.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
+                        cur_rotation.x += mv;
+                    }
+                // For the right arm or forearm (increasing angle)
+                else
+                    if(cur_rotation.z < 90.0f) {
+                        tf = {'r', mv, 90.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
+                        cur_rotation.x += mv;
+                    }
+            } else {
+                return false; // Some function input error occurred
+            }
+            rots.push_back(tf);
+            // Removes all unnecessary rotations
+            // Add code here
+        } else {
+            return false;
+        }
+        rots.push_back(tf);
     }
 };
 
@@ -207,11 +349,13 @@ private:
            upper_left_leg,
            lower_left_leg;
     Point origem;
+    std::string member;
 public:
     Dummy() {
         origem = {0.0f, 0.0f, 0.0f};
         // Builds a dummy with the following dimensions:
         // Cuboid(float height, float width, float length, std::string type)
+        std::cout << "Initializing..." << std::endl;
         this->head = Cuboid(10.0f, 10.0f, 5.0f, "head");
         this->chest = Cuboid(20.0f, 12.5f, 5.0f, "chest");
         this->left_arm = Cuboid(10.0f, 5.0f, 5.0f, "left_arm");
@@ -222,20 +366,19 @@ public:
         this->upper_right_leg = Cuboid(12.5f, 5.0f, 5.0f, "upper_right_leg");
         this->lower_left_leg = Cuboid(12.5f, 5.0f, 5.0f, "lower_left_leg");
         this->lower_right_leg = Cuboid(12.5f, 5.0f, 5.0f, "lower_right_leg");
-    }
 
-    void setRotationDirection(char key, char part) {
-        transformation tf;
+        head.link(&chest);
+        left_forearm.link(&left_arm);
+        right_forearm.link(&right_arm);
+        lower_left_leg.link(&upper_left_leg);
+        lower_right_leg.link(&upper_right_leg);
 
-        if(key == 'j') {
+        right_arm.link(&chest, &right_arm);
+        left_arm.link(&chest, &left_forearm);
+        upper_left_leg.link(&chest, &lower_left_leg);
+        upper_right_leg.link(&chest, &lower_right_leg);
 
-        } else if(key == 'l') {
-
-        } else if(key == 'k') {
-
-        } else if(key == 'i') {
-
-        }
+        chest.link(&head, &left_arm, &right_arm, &upper_left_leg, &upper_right_leg);
     }
 
     void walk_legup() {}
@@ -259,18 +402,6 @@ public:
 
     }
 
-    void look_up() {
-
-    }
-
-    void look_down() {
-
-    }
-
-    void animate() {
-
-    }
-
     // Funções de Impressão
 
     void draw() {
@@ -281,8 +412,6 @@ public:
                 parâmetros do translate.
             Para os movimentos dos membros, são chamados rotates com os ângulos de cada caso.
          */
-
-        animate();
 
         float deg = -45.0f;
 
@@ -349,8 +478,21 @@ public:
 
     }
 
-    char select(char part) {
-        static std::string member = "none";
+    void clearSelect() {
+        head.selected = false;
+        chest.selected = false;
+        left_arm.selected = false;
+        right_arm.selected = false;
+        left_forearm.selected = false;
+        right_forearm.selected = false;
+        upper_left_leg.selected = false;
+        lower_left_leg.selected = false;
+        lower_right_leg.selected = false;
+        upper_right_leg.selected = false;
+    }
+
+    void newSelect(char part) {
+        std::cout << part << std::endl;
         switch(part) {
             case '2':
                 std::cout << "Torso selected" << std::endl;
@@ -364,39 +506,47 @@ public:
                 break;
             case '1':
                 std::cout << "Left arm selected" << std::endl;
+                left_arm.selected = true;
                 member = "larm";
                 break;
             case '3':
                 std::cout << "Right arm selected" << std::endl;
+                right_arm.selected = true;
                 member = "rarm";
                 // Select chest
                 break;
             case '4':
                 std::cout << "Left forearm selected" << std::endl;
+                left_forearm.selected = true;
                 member = "lfarm";
                 break;
             case '5':
                 std::cout << "Right forearm selected" << std::endl;
+                right_forearm.selected = true;
                 member = "rfarm";
                 // Select chest
                 break;
             case '6':
                 std::cout << "Coxa esquerda selected" << std::endl;
+                upper_left_leg.selected = true;
                 member = "ulleg";
                 // Select coxa
                 break;
             case '7':
                 std::cout << "Coxa direita selected" << std::endl;
+                upper_right_leg.selected = true;
                 member = "urleg";
                 // Select coxa
                 break;
             case '8':
                 std::cout << "Panturrilha esquerda selected" << std::endl;
+                lower_left_leg.selected = true;
                 member = "llleg";
                 // Select panturrilha
                 break;
             case '9':
                 std::cout << "Panturrilha direita selected" << std::endl;
+                lower_right_leg.selected = true;
                 member = "lrleg";
                 // Select panturrilha
                 break;
@@ -407,12 +557,53 @@ public:
         }
     }
 
-    void setMovement(char key) {
+    char select(char part) {
+        static std::string member = "none";
 
+        clearSelect();
+        member = "none";
+        newSelect(part);
+    }
+
+    void setMovement(char key) {
+        std::cout << member << std::endl;
+        if (member == "chest")
+            chest.addMovement(key);
+        else if (member == "head")
+            head.addMovement(key);
+        else if (member == "larm")
+            right_arm.addMovement(key);
+        else if (member == "rarm")
+            right_arm.addMovement(key);
+        else if (member == "lfarm")
+            left_forearm.addMovement(key);
+        else if (member == "rfarm")
+            right_forearm.addMovement(key);
+        else if (member == "ulleg")
+            upper_left_leg.addMovement(key);
+        else if (member == "urleg")
+            upper_right_leg.addMovement(key);
+        else if (member == "llleg")
+            lower_left_leg.addMovement(key);
+        else if (member == "lrleg")
+            lower_right_leg.addMovement(key);
+        else
+            member = "none";
     }
 };
 
+
+// Global variable declaration
 Dummy dm = Dummy();
+Camera cam[] = {   // Vector of camera positions
+                    {{-100.0, 20.0, 100.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
+                    {{- 15.0, 20.0, 100.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
+                    {{   0.0, 20.0, 100.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
+                    {{  15.0, 20.0, 100.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
+                    {{ 100.0, 20.0,   0.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}}
+                };
+short unsigned ci = 2;  // Camera index
+
 
 static void resize(int width, int height) {
     glMatrixMode(GL_PROJECTION);
@@ -425,7 +616,9 @@ static void display(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
-    gluLookAt(-10.0, 20.0, 100.0, 0.0, 30.0, 0.0, 0.0, 1.0, 0.0);
+    gluLookAt(cam[ci].orgn.x, cam[ci].orgn.y, cam[ci].orgn.z,
+              cam[ci].drct.x, cam[ci].drct.y, cam[ci].drct.z,
+              cam[ci].vect.x, cam[ci].vect.y, cam[ci].vect.z);
     dm.draw();
 
     glutSwapBuffers();
@@ -443,6 +636,7 @@ static void key(unsigned char key, int x, int y) {
             std::cout << "Starting walk animation" << std::endl;
             // Set walk animation
             break;
+        case '0':
         case '1':
         case '2':
         case '3':
@@ -459,6 +653,12 @@ static void key(unsigned char key, int x, int y) {
         case 'k':
         case 'l':
             dm.setMovement(key);
+            break;
+        case 'n':
+            dm.clearSelect();
+            break;
+        case 'c':
+            ci = (ci + 1) % (sizeof(cam)/sizeof(Camera));
             break;
     }
 
@@ -479,6 +679,7 @@ int main(int argc, char *argv[]) {
 
     glutCreateWindow("Trabalho Robô Lab. Computação Gráfica");
 
+    glutSetKeyRepeat(GLUT_KEY_REPEAT_ON);
     glutReshapeFunc(resize);
     glutDisplayFunc(display);
     glutKeyboardFunc(key);
