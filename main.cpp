@@ -740,6 +740,27 @@ Camera cam[] = {   // Vector of camera positions
                 };
 short unsigned ci = 2;  // Camera index
 
+/*
+Source: https://stackoverflow.com/questions/4202456/how-do-you-get-the-modelview-and-projection-matrices-in-opengl
+*/
+void printMatrixes() {
+    GLfloat model[16];
+    glGetFloatv(GL_MODELVIEW_MATRIX, model);
+    std::cout << "Model View Matrix" << std::endl;
+    for(int i = 0; i < 16; i++) {
+        std::cout << model[i] << " ";
+        if(i % 4 == 3)
+            std::cout << std::endl;
+    }
+    std::cout << "Projection Matrix" << std::endl;
+    glGetFloatv(GL_PROJECTION_MATRIX, model);
+    for(int i = 0; i < 16; i++) {
+        std::cout << model[i] << " ";
+        if(i % 4 == 3)
+            std::cout << std::endl;
+    }
+}
+
 
 static void resize(int width, int height) {
     glMatrixMode(GL_PROJECTION);
@@ -749,6 +770,7 @@ static void resize(int width, int height) {
 }
 
 static void display(void) {
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
@@ -756,6 +778,7 @@ static void display(void) {
               cam[ci].drct.x, cam[ci].drct.y, cam[ci].drct.z,
               cam[ci].vect.x, cam[ci].vect.y, cam[ci].vect.z);
     dm.draw();
+    printMatrixes();
 }
 
 static void key(unsigned char key, int x, int y) {
