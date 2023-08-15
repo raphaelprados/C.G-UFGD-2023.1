@@ -311,14 +311,17 @@ public:
             // Left leaning movement
             } else if(key == 'j') {
                 // For the left leg or lower leg (increasing angle)
-                if(this->type.find("lef") != std::string::npos)
-                    if(cur_rotation.z > -90.0f) {
-                        tf = {'r', -mv, -90.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
+                if(this->type.find("lef") != std::string::npos) {
+                    std::cout << "Bazinga" << std::endl;
+                    if(cur_rotation.z > -45.0f) {
+                        tf = {'r', -mv, -45.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
                         cur_rotation.z -= mv;
                     }
+                }
                 // For the right leg or lower leg (decreasing angle)
                 else
                     if(cur_rotation.z > 0.0f) {
+                        std::cout << "Found" << std::endl;
                         tf = {'r', -mv, 90.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
                         cur_rotation.z -= mv;
                     }
@@ -331,15 +334,16 @@ public:
             // Right leaning movement
             } else if(key == 'l') {
                 // For the left arm or forearm (decreasing angle)
-                if(this->type.find("lef") != std::string::npos)
+                if(this->type.find("lef") != std::string::npos) {
                     if(cur_rotation.z < 0.0) {
                         tf = {'r', mv, -90.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
                         cur_rotation.z += mv;
                     }
+                }
                 // For the right arm or forearm (increasing angle)
                 else {
-                    if(cur_rotation.z < 90.0f) {
-                        tf = {'r', mv, 90.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
+                    if(cur_rotation.z < 45.0f) {
+                        tf = {'r', mv, 45.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
                         cur_rotation.z += mv;
                     }
                 }
@@ -526,6 +530,10 @@ public:
 
     }
 
+    void info() {
+
+    }
+
     // Funções de Impressão
 
     void draw() {
@@ -539,18 +547,18 @@ public:
 
         float deg = -45.0f;
 
-        // Desenho do torso
-        glColor3f(1.0f, 1.0f, 0.0f);
-        glPushMatrix();
-            glTranslatef(0.0f, upper_left_leg.dims.y + lower_left_leg.dims.y, 0.0f); // Deslocamento para imprimir o torso a partir do canto inferior esquerdo
-            this->chest.draw();
-        glPopMatrix();
-
         // Desenho da cabeca
         glColor3f(0.0f, 1.0f, 0.5f);
         glPushMatrix();
             glTranslatef((chest.dims.x - head.dims.x) / 2, lower_left_leg.dims.y + upper_left_leg.dims.y + chest.dims.y, 0.0f); // Deslocamento para imprimir a partir do pescoco pelo lado esquerdo
             this->head.draw();
+        glPopMatrix();
+
+        // Desenho do torso
+        glColor3f(1.0f, 1.0f, 0.0f);
+        glPushMatrix();
+            glTranslatef(0.0f, upper_left_leg.dims.y + lower_left_leg.dims.y, 0.0f); // Deslocamento para imprimir o torso a partir do canto inferior esquerdo
+            this->chest.draw();
         glPopMatrix();
 
         // Desenho das coxas
@@ -585,6 +593,10 @@ public:
             glTranslatef(left_forearm.dims.x + chest.dims.x, 0.0f, 0.0f); // Deslocamento para imprimir a partir da mao direita
             this->right_forearm.draw();
         glPopMatrix();
+
+        // Prints informations on the screen
+        info();
+
         glutSwapBuffers();
     }
 
@@ -721,9 +733,9 @@ public:
 Dummy dm = Dummy();
 Camera cam[] = {   // Vector of camera positions
                     {{-100.0, 20.0,   0.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
-                    {{- 15.0, 20.0, 100.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
+                    {{- 25.0, 20.0, 100.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
                     {{   0.0, 20.0, 100.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
-                    {{  15.0, 20.0, 100.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
+                    {{  25.0, 20.0, 100.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
                     {{ 100.0, 20.0,   0.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}}
                 };
 short unsigned ci = 2;  // Camera index
@@ -732,7 +744,7 @@ short unsigned ci = 2;  // Camera index
 static void resize(int width, int height) {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(45.0, (GLdouble) width/height, 1.0, 100.0);
+    gluPerspective(60.0, (GLdouble) width/height, 1.0, 200.0);
     glMatrixMode(GL_MODELVIEW);
 }
 
@@ -817,3 +829,12 @@ int main(int argc, char *argv[]) {
 
     return EXIT_SUCCESS;
 }
+
+/*
+
+Notas e Matrizes
+
+gluPerspective(45.0, (GLdouble) width/height, 1.0, 100.0);
+
+
+*/
