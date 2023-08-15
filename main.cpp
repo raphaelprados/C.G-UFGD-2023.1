@@ -66,12 +66,6 @@ public:
             glVertex3f(points[1].x, points[1].y, points[1].z);
             glVertex3f(points[3].x, points[3].y, points[3].z);
             glVertex3f(points[2].x, points[2].y, points[2].z);
-            /*
-            std::cout << points[0].x << " " << points[0].y << " " << points[0].z << std::endl;
-            std::cout << points[1].x << " " << points[1].y << " " << points[1].z << std::endl;
-            std::cout << points[3].x << " " << points[3].y << " " << points[2].z << std::endl;
-            std::cout << points[2].x << " " << points[2].y << " " << points[3].z << std::endl;
-            */
         glEnd();
     }
 };
@@ -187,11 +181,27 @@ public:
         joints.push_back(right_leg);
     }
 
+    Point getParntCurRot() {
+        return cur_rotation;
+    }
+
     // Pushes all the rotation and translations matrixes for this Cuboid
     void pushActMx() {
+        Point mv = {0.0f, 0.0f, 0.0f};
+        // Sets aditional movements for specific members
+        if((type.find("low") != std::string::npos || type.find("for") != std::string::npos) && cur_rotation.x < 0.0f
+           && joints[0]->getParntCurRot().x == 0.0f) {     // Fixes front leaning rotation of lower legs
+            mv.z = dims.z;
+        }
+
+        if((type == "right_arm" || type == "right_forearm") && cur_rotation.z > 0.0f) {
+            mv.x = -dims.z;
+        }
+
+        // Pushes the translation and rotation matrixes
         glPushMatrix();
         if(type == "right_forearm" || type == "left_forearm" || type == "lower_right_leg" || type == "lower_left_leg") {
-            glTranslatef(dims.x, dims.y + (selected ? 0.0f : joints[0]->dims.y), 0.0f);         // Returns to origin
+            glTranslatef(dims.x + mv.x, dims.y + (selected ? 0.0f : joints[0]->dims.y) + mv.y, 0.0f + mv.z);         // Returns to origin
             for(transformation tf : trns)                                   // Translations
                 glTranslatef(tf.d.x, tf.d.y, tf.d.z);
             for(transformation tf : rots_x)                                 // X axis rotations
@@ -199,16 +209,16 @@ public:
             for(transformation tf : rots_z)                                 // Z axis rotations
                 glRotatef(tf.deg, tf.ax.x, tf.ax.y, tf.ax.z);
             // the unary operator controls if said member is being moved along with it's parent member
-            glTranslatef(-dims.x, - dims.y - (selected ? 0.0f : joints[0]->dims.y), 0.0f);      // Sets position for rotation
+            glTranslatef(-dims.x - mv.x, - dims.y - (selected ? 0.0f : joints[0]->dims.y) - mv.y, 0.0f - mv.z);      // Sets position for rotation
         } else if(type == "right_arm" || type == "left_arm" || type == "upper_right_leg" || type == "upper_left_leg") {
-            glTranslatef(dims.x, dims.y, 0.0f);                             // Returns to origin
+            glTranslatef(dims.x + mv.x, dims.y + mv.y, 0.0f + mv.z);                             // Returns to origin
             for(transformation tf : trns)                                   // Translations
                 glTranslatef(tf.d.x, tf.d.y, tf.d.z);
             for(transformation tf : rots_x)                                 // X axis rotations
                 glRotatef(tf.deg, tf.ax.x, tf.ax.y, tf.ax.z);
             for(transformation tf : rots_z)                                 // Z axis rotations
                 glRotatef(tf.deg, tf.ax.x, tf.ax.y, tf.ax.z);
-            glTranslatef(-dims.x, -dims.y, 0.0f);                           // Sets position for rotation
+            glTranslatef(-dims.x - mv.x, -dims.y - mv.y, 0.0f - mv.z);                           // Sets position for rotation
         }
     }
 
@@ -286,7 +296,6 @@ public:
                 // For the right arm or forearm (increasing angle)
                 else {
                     if(cur_rotation.z < 180.0f) {
-                        std::cout << "Wut" << std::endl;
                         tf = {'r', +mv, 180.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
                         cur_rotation.z += mv;
                     }
@@ -306,13 +315,11 @@ public:
                 if(cur_rotation.x < 45.0f) {
                     tf = {'r', mv, 45.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
                     cur_rotation.x += mv;
-                    std::cout << cur_rotation.x << std::endl;
                 }
             // Left leaning movement
             } else if(key == 'j') {
                 // For the left leg or lower leg (increasing angle)
                 if(this->type.find("lef") != std::string::npos) {
-                    std::cout << "Bazinga" << std::endl;
                     if(cur_rotation.z > -45.0f) {
                         tf = {'r', -mv, -45.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
                         cur_rotation.z -= mv;
@@ -321,7 +328,6 @@ public:
                 // For the right leg or lower leg (decreasing angle)
                 else
                     if(cur_rotation.z > 0.0f) {
-                        std::cout << "Found" << std::endl;
                         tf = {'r', -mv, 90.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
                         cur_rotation.z -= mv;
                     }
@@ -329,7 +335,6 @@ public:
                 if(cur_rotation.x > -45.0f) {
                     tf = {'r', -mv, -45.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
                     cur_rotation.x -= mv;
-                    std::cout << cur_rotation.x << std::endl;
                 }
             // Right leaning movement
             } else if(key == 'l') {
@@ -466,19 +471,25 @@ public:
         // First phase, 90 degrees front for right leg
         for(int i = 0; i < 90; i++) {
             upper_right_leg.addMovement('k');
+            // Arms movements
+            if(i < 15) {
+                left_arm.addMovement('i');
+                right_arm.addMovement('k');
+            }
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             draw();
             glutPostRedisplay();
-            //usleep(1000);
         }
         // Second phase, -45 degrees for both legs
         for(int i = 0; i < 22; i++) {
             upper_right_leg.addMovement('i');
             upper_left_leg.addMovement('i');
+            // Arms movements
+            left_arm.addMovement('k');
+            right_arm.addMovement('i');
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             draw();
             glutPostRedisplay();
-            //usleep(1000);
         }
 
 
@@ -490,7 +501,6 @@ public:
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             draw();
             glutPostRedisplay();
-            //usleep(1000);
         }
 
         // Fourth phase, -45 degrees for both legs
@@ -500,7 +510,6 @@ public:
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             draw();
             glutPostRedisplay();
-            //usleep(1000);
         }
         // Fifth phase, -45 degrees for right leg and 135 for left leg
         for(int i = 0; i < 112; i++) {
@@ -510,7 +519,6 @@ public:
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             draw();
             glutPostRedisplay();
-            //usleep(1000);
         }
 
         for(int i = 0; i < 45; i++) {
@@ -518,7 +526,6 @@ public:
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             draw();
             glutPostRedisplay();
-            //usleep(1000);
         }
     }
 
@@ -530,8 +537,64 @@ public:
 
     }
 
-    void info() {
+    void movingMemberInfo() {
+        /*
+        Point temp;
+        std::vector<std::string> member_info;
+        if(left_arm.selected) {
+            temp = left_arm.getRotParams();
+        } else if(left_forearm.selected)
+            temp = left_forearm.getRotParams();
+        else if(right_arm.selected)
+            temp = right_arm.getRotParams();
+        else if(right_forearm.selected)
+            temp = right_forearm.getRotParams();
+        else if(upper_left_leg.selected)
+            temp = upper_left_leg.getRotParams();
+        else if(upper_right_leg.selected)
+            temp = upper_right_leg.getRotParams();
+        else if(lower_left_leg.selected)
+            temp = lower_left_leg.getRotParams();
+        else if(lower_right_leg.selected)
+            temp = lower_right_leg.getRotParams();
+        */
+    }
 
+    void info() {
+        std::string texts[] = {
+            "Como Selecionar",
+            "0. Cabeca", "1. Braco Esquerdo", "2. Torso", "3. Braco Direito",
+            "4. Antebraco Esquerdo", "5. Antebraco Direito", "6. Coxa Esquerda",
+            "7. Coxa Direita", "8. Panturrilha Esquerda", "9. Panturrilha Direita",
+            "Direcao de movimento",
+            "i. Sentd. Horario no eixo z", "k. Sentd. Antihorario no eixo z",
+            "j. Sentd. Antihorario no eixo x", "l. Sentd. Horario no eixo x",
+            "Comandos fixos: ",
+            "r. Reset de movimentos", "n. Soltar membro", "w. Andar",
+            "c. Trocar Camera"
+        };
+
+        glMatrixMode(GL_PROJECTION);
+        glPushMatrix();
+        glLoadIdentity();
+        gluOrtho2D(0, SCREEN_LENGTH, 0, SCREEN_HEIGHT); //dimensões da janela
+
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+        glLoadIdentity();
+
+        glColor3f(1.0f, 1.0f, 1.0f);
+        for(int i = 0; i < sizeof(texts)/sizeof(std::string); i++) {
+            glRasterPos2f(10.0f, 460.0f - i * 20.0f);
+            for(char c : texts[i])
+                glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
+        }
+
+        glPopMatrix();
+
+        glMatrixMode(GL_PROJECTION);
+        glPopMatrix();
+        glMatrixMode(GL_MODELVIEW);
     }
 
     // Funções de Impressão
@@ -614,7 +677,6 @@ public:
     }
 
     void newSelect(char part) {
-        std::cout << part << std::endl;
         switch(part) {
             case '2':
                 std::cout << "Torso selected" << std::endl;
@@ -688,7 +750,6 @@ public:
     }
 
     void setMovement(char key) {
-        std::cout << member << std::endl;
         if (member == "chest")
             chest.addMovement(key);
         else if (member == "head")
@@ -732,11 +793,11 @@ public:
 // Global variable declaration
 Dummy dm = Dummy();
 Camera cam[] = {   // Vector of camera positions
-                    {{-100.0, 20.0,   0.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
-                    {{- 25.0, 20.0, 100.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
-                    {{   0.0, 20.0, 100.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
-                    {{  25.0, 20.0, 100.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
-                    {{ 100.0, 20.0,   0.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}}
+                    {{-75.0, 20.0, 80.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
+                    {{-29.28, 20.0, 100.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
+                    {{  0.0, 20.0, 100.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
+                    {{ 29.28, 20.0, 100.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}},
+                    {{ 75.0, 20.0, 80.0}, {0.0, 30.0, 0.0}, {0.0, 1.0, 0.0}}
                 };
 short unsigned ci = 2;  // Camera index
 
@@ -744,21 +805,27 @@ short unsigned ci = 2;  // Camera index
 Source: https://stackoverflow.com/questions/4202456/how-do-you-get-the-modelview-and-projection-matrices-in-opengl
 */
 void printMatrixes() {
-    GLfloat model[16];
-    glGetFloatv(GL_MODELVIEW_MATRIX, model);
-    std::cout << "Model View Matrix" << std::endl;
-    for(int i = 0; i < 16; i++) {
-        std::cout << model[i] << " ";
-        if(i % 4 == 3)
-            std::cout << std::endl;
+    static bool show = true;
+    // Shows the matrixes only once
+    if(show) {
+        GLfloat model[16];
+        glGetFloatv(GL_MODELVIEW_MATRIX, model);
+        std::cout << "Model View Matrix" << std::endl;
+        for(int i = 0; i < 16; i++) {
+            std::cout << model[i] << " ";
+            if(i % 4 == 3)
+                std::cout << std::endl;
+        }
+        std::cout << "Projection Matrix" << std::endl;
+        glGetFloatv(GL_PROJECTION_MATRIX, model);
+        for(int i = 0; i < 16; i++) {
+            std::cout << model[i] << " ";
+            if(i % 4 == 3)
+                std::cout << std::endl;
+        }
+        show = false;
     }
-    std::cout << "Projection Matrix" << std::endl;
-    glGetFloatv(GL_PROJECTION_MATRIX, model);
-    for(int i = 0; i < 16; i++) {
-        std::cout << model[i] << " ";
-        if(i % 4 == 3)
-            std::cout << std::endl;
-    }
+
 }
 
 
