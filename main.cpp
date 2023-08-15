@@ -154,7 +154,7 @@ public:
 
     void draw() {
         if(selected)
-            glColor3f(0.0f, 0.0f, 0.0f);
+            glColor3f(0.0f, 1.0f, 1.0f);
         else
             glColor3f(color.x, color.y, color.z);
         pushActMx();
@@ -249,24 +249,25 @@ public:
             // Up leaning movement
             if(key == 'i') {
                 if(cur_rotation.x < 360.0f) {
-                    std::cout << "Bar" << std::endl;
                     tf = {'r', mv,  360.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
                     cur_rotation.x += mv;
                 }
             // Left leaning movement
             } else if(key == 'j') {
                 // For the left arm or forearm (increasing angle)
-                if(this->type.find("lef") != std::string::npos)
+                if(this->type.find("lef") != std::string::npos) {
                     if(cur_rotation.z > -180.0f) {
                         tf = {'r', -mv, -180.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
                         cur_rotation.z -= mv;
                     }
+                }
                 // For the right arm or forearm (decreasing angle)
-                else
+                else {
                     if(cur_rotation.z > 0.0f) {
                         tf = {'r', -mv, 180.0f, {0.0, 0.0, 1.0}, {0.0f, 0.0f, 0.0f}};
                         cur_rotation.z -= mv;
                     }
+                }
             // Down leaning movement
             } else if(key == 'k') {
                 if(cur_rotation.x > -360.0f) {
@@ -302,10 +303,10 @@ public:
         } else if(this->type.find("leg") != std::string::npos) {
             // Up leaning movement
             if(key == 'i') {
-                if(cur_rotation.x < 90.0f) {
-                    std::cout << "Here" << std::endl;
-                    tf = {'r', mv,  90.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
+                if(cur_rotation.x < 45.0f) {
+                    tf = {'r', mv, 45.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
                     cur_rotation.x += mv;
+                    std::cout << cur_rotation.x << std::endl;
                 }
             // Left leaning movement
             } else if(key == 'j') {
@@ -322,9 +323,10 @@ public:
                         cur_rotation.z -= mv;
                     }
             } else if(key == 'k') {
-                if(cur_rotation.x > -90.0f) {
-                    tf = {'r', -mv, -90.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
+                if(cur_rotation.x > -45.0f) {
+                    tf = {'r', -mv, -45.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
                     cur_rotation.x -= mv;
+                    std::cout << cur_rotation.x << std::endl;
                 }
             // Right leaning movement
             } else if(key == 'l') {
@@ -366,6 +368,33 @@ public:
         if(rots_z.size() != 0 && (cur_rotation.z == 0.0f || cur_rotation.z == 360.0f))
             rots_z.clear();
     }
+
+    void setToDefault() {
+        rots_x.clear();
+        rots_z.clear();
+        trns.clear();
+
+    }
+};
+
+class Joints : public Cuboid {
+private:
+    double radius;
+    int slices, stacks;
+public:
+    Joints() {
+
+    }
+
+    Joints(double r, int sl, int st) {
+        radius = r;
+        slices = sl;
+        stacks = st;
+    }
+
+    void drawJoint() {
+        glutSolidSphere(radius, slices, stacks);
+    }
 };
 
 class Dummy{
@@ -380,6 +409,14 @@ private:
            lower_right_leg,
            upper_left_leg,
            lower_left_leg;
+    Joints left_knee,
+           right_knee,
+           left_femur,
+           right_femur,
+           left_elbow,
+           right_elbow,
+           left_shoulder,
+           right_shoulder;
     Point origem;
     std::string member;
 public:
@@ -398,6 +435,14 @@ public:
         this->upper_right_leg = Cuboid(12.5f, 5.0f, 5.0f, "upper_right_leg");
         this->lower_left_leg = Cuboid(12.5f, 5.0f, 5.0f, "lower_left_leg");
         this->lower_right_leg = Cuboid(12.5f, 5.0f, 5.0f, "lower_right_leg");
+        this->left_knee = Joints(2.5f, 50, 50);
+        this->right_knee = Joints(2.5f, 50, 50);
+        this->left_femur = Joints(2.5f, 50, 50);
+        this->right_femur = Joints(2.5f, 50, 50);
+        this->left_elbow = Joints(2.5f, 50, 50);
+        this->right_elbow = Joints(2.5f, 50, 50);
+        this->left_shoulder = Joints(2.5f, 50, 50);
+        this->right_shoulder = Joints(2.5f, 50, 50);
 
         head.link(&chest);
         left_forearm.link(&left_arm);
@@ -413,17 +458,64 @@ public:
         chest.link(&head, &left_arm, &right_arm, &upper_left_leg, &upper_right_leg);
     }
 
-    void walk_legup() {}
-    void walk_leg90deg() {}
-    void walk_legdown() {}
-
     void walk() {
-        // legup perna direita
-        // leg90deg ambas as pernas
-        // legdown direita e legup esquerda
-        // leg90ged ambas as pernas
-        // legdown esquerda e legup direita
-        // legdown direita
+        // First phase, 90 degrees front for right leg
+        for(int i = 0; i < 90; i++) {
+            upper_right_leg.addMovement('k');
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            draw();
+            glutPostRedisplay();
+            //usleep(1000);
+        }
+        // Second phase, -45 degrees for both legs
+        for(int i = 0; i < 22; i++) {
+            upper_right_leg.addMovement('i');
+            upper_left_leg.addMovement('i');
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            draw();
+            glutPostRedisplay();
+            //usleep(1000);
+        }
+
+
+        // Third phase, -45 degrees for right leg and +135 for right
+        for(int i = 0; i < 112; i++) {
+            if(i < 23)
+                upper_right_leg.addMovement('i');
+            upper_left_leg.addMovement('k');
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            draw();
+            glutPostRedisplay();
+            //usleep(1000);
+        }
+
+        // Fourth phase, -45 degrees for both legs
+        for(int i = 0; i < 22; i++) {
+            upper_right_leg.addMovement('i');
+            upper_left_leg.addMovement('i');
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            draw();
+            glutPostRedisplay();
+            //usleep(1000);
+        }
+        // Fifth phase, -45 degrees for right leg and 135 for left leg
+        for(int i = 0; i < 112; i++) {
+            if(i < 22)
+                upper_left_leg.addMovement('i');
+            upper_right_leg.addMovement('k');
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            draw();
+            glutPostRedisplay();
+            //usleep(1000);
+        }
+
+        for(int i = 0; i < 45; i++) {
+            upper_right_leg.addMovement('i');
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            draw();
+            glutPostRedisplay();
+            //usleep(1000);
+        }
     }
 
     void turn() {
@@ -447,53 +539,6 @@ public:
 
         float deg = -45.0f;
 
-        // Desenho das pernas
-        this->lower_left_leg.draw();
-        glPushMatrix();
-            glTranslatef(lower_left_leg.dims.x + (chest.dims.x - 2*lower_left_leg.dims.x),
-                         0.0f, 0.0f); // Deslocamento para imprimir perna direita
-            this->lower_right_leg.draw();
-        glPopMatrix();
-
-        // Desenho das coxas
-        glPushMatrix();
-            glTranslatef(0.0f, lower_left_leg.dims.y, 0.0f); // Deslocamento para imprimir coxa esquerda
-            this->upper_left_leg.draw();
-            glTranslatef(upper_left_leg.dims.x + (chest.dims.x - 2*upper_left_leg.dims.x), 0.0f, 0.0f); // Deslocamento para imprimir coxa direita
-            this->upper_right_leg .draw();
-        glPopMatrix();
-
-        // Desenho do braço
-        glPushMatrix();
-            glTranslatef(-left_forearm.dims.x, lower_left_leg.dims.y + upper_left_leg.dims.y + left_forearm.dims.y, 0.0f); // Deslocamento para imprimir a partir do cotovelo esquerdo
-            glPushMatrix();
-                /*
-                glTranslatef(left_forearm.dims.x, left_forearm.dims.y, 0.0f);
-                glRotatef(deg, 0.0, 0.0, 1.0);
-                glTranslatef(-left_forearm.dims.x, -left_forearm.dims.y, 0.0f);
-                */
-                this->left_arm.draw();
-            glPopMatrix();
-            glTranslatef(left_forearm.dims.x + chest.dims.x, 0.0f, 0.0f); // Deslocamento para imprimir a partir do cotovelo direito
-            this->right_arm.draw();
-        glPopMatrix();
-
-        // Desenho do antebraco
-        glPushMatrix();
-            glTranslatef(-1*left_forearm.dims.x,
-                         upper_left_leg.dims.y + lower_left_leg.dims.y, 0.0f); // Deslocamento para imprimir a partir da mao esquerda
-            glPushMatrix();
-                /*
-                glTranslatef(left_forearm.dims.x, left_forearm.dims.y + left_arm.dims.y, 0.0f);
-                glRotatef(deg, 0.0, 0.0, 1.0);
-                glTranslatef(-left_forearm.dims.x, -left_forearm.dims.y -left_arm.dims.y, 0.0f);
-                */
-                this->left_forearm.draw();
-            glPopMatrix();
-            glTranslatef(left_forearm.dims.x + chest.dims.x, 0.0f, 0.0f); // Deslocamento para imprimir a partir da mao direita
-            this->right_forearm.draw();
-        glPopMatrix();
-
         // Desenho do torso
         glColor3f(1.0f, 1.0f, 0.0f);
         glPushMatrix();
@@ -508,6 +553,39 @@ public:
             this->head.draw();
         glPopMatrix();
 
+        // Desenho das coxas
+        glPushMatrix();
+            glTranslatef(0.0f, lower_left_leg.dims.y, 0.0f); // Deslocamento para imprimir coxa esquerda
+            this->upper_left_leg.draw();
+            glTranslatef(upper_left_leg.dims.x + (chest.dims.x - 2*upper_left_leg.dims.x), 0.0f, 0.0f); // Deslocamento para imprimir coxa direita
+            this->upper_right_leg .draw();
+        glPopMatrix();
+
+        // Desenho das pernas
+        this->lower_left_leg.draw();
+        glPushMatrix();
+            glTranslatef(lower_left_leg.dims.x + (chest.dims.x - 2*lower_left_leg.dims.x),
+                         0.0f, 0.0f); // Deslocamento para imprimir perna direita
+            this->lower_right_leg.draw();
+        glPopMatrix();
+
+        // Desenho do braço
+        glPushMatrix();
+            glTranslatef(-left_forearm.dims.x, lower_left_leg.dims.y + upper_left_leg.dims.y + left_forearm.dims.y, 0.0f); // Deslocamento para imprimir a partir do cotovelo esquerdo
+            this->left_arm.draw();
+            glTranslatef(left_forearm.dims.x + chest.dims.x, 0.0f, 0.0f); // Deslocamento para imprimir a partir do cotovelo direito
+            this->right_arm.draw();
+        glPopMatrix();
+
+        // Desenho do antebraco
+        glPushMatrix();
+            glTranslatef(-1*left_forearm.dims.x,
+                         upper_left_leg.dims.y + lower_left_leg.dims.y, 0.0f); // Deslocamento para imprimir a partir da mao esquerda
+            this->left_forearm.draw();
+            glTranslatef(left_forearm.dims.x + chest.dims.x, 0.0f, 0.0f); // Deslocamento para imprimir a partir da mao direita
+            this->right_forearm.draw();
+        glPopMatrix();
+        glutSwapBuffers();
     }
 
     void clearSelect() {
@@ -622,6 +700,20 @@ public:
         else
             member = "none";
     }
+
+    void clearMoves() {
+        this->head.setToDefault();
+        this->chest.setToDefault();
+        this->left_arm.setToDefault();
+        this->left_forearm.setToDefault();
+        this->right_arm.setToDefault();
+        this->right_forearm.setToDefault();
+        this->upper_left_leg.setToDefault();
+        this->lower_left_leg.setToDefault();
+        this->upper_right_leg.setToDefault();
+        this->lower_right_leg.setToDefault();
+        clearSelect();
+    }
 };
 
 
@@ -652,8 +744,6 @@ static void display(void) {
               cam[ci].drct.x, cam[ci].drct.y, cam[ci].drct.z,
               cam[ci].vect.x, cam[ci].vect.y, cam[ci].vect.z);
     dm.draw();
-
-    glutSwapBuffers();
 }
 
 static void key(unsigned char key, int x, int y) {
@@ -666,6 +756,7 @@ static void key(unsigned char key, int x, int y) {
             break;
         case 'w':
             std::cout << "Starting walk animation" << std::endl;
+            dm.walk();
             // Set walk animation
             break;
         case '0':
@@ -692,6 +783,9 @@ static void key(unsigned char key, int x, int y) {
         case 'c':
             ci = (ci + 1) % (sizeof(cam)/sizeof(Camera));
             break;
+        case 'r':
+            dm.clearMoves();
+            break;
     }
 
     glutPostRedisplay();
@@ -717,7 +811,7 @@ int main(int argc, char *argv[]) {
     glutKeyboardFunc(key);
     glutIdleFunc(idle);
 
-    glClearColor(1.0f,1.0f,1.0f,1.0f);
+    glClearColor(0.0f,0.0f,0.0f,1.0f);
 
     glutMainLoop();
 
