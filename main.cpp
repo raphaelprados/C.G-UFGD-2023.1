@@ -9,6 +9,10 @@
 
 */
 
+/*
+    You will find some odd things on this code, as it was partly written after 2am. Never do that.
+*/
+
 #ifdef __APPLE__
 #include <GLUT/glut.h>
 #else
@@ -201,7 +205,7 @@ public:
         // Pushes the translation and rotation matrixes
         glPushMatrix();
         if(type == "right_forearm" || type == "left_forearm" || type == "lower_right_leg" || type == "lower_left_leg") {
-            glTranslatef(dims.x + mv.x, dims.y + (selected ? 0.0f : joints[0]->dims.y) + mv.y, 0.0f + mv.z);         // Returns to origin
+            glTranslatef(dims.x + mv.x, dims.y + ((selected || getParntCurRot().z == 0.0f) ? 0.0f : joints[0]->dims.y) + mv.y, 0.0f + mv.z);         // Returns to origin
             for(transformation tf : trns)                                   // Translations
                 glTranslatef(tf.d.x, tf.d.y, tf.d.z);
             for(transformation tf : rots_x)                                 // X axis rotations
@@ -209,9 +213,9 @@ public:
             for(transformation tf : rots_z)                                 // Z axis rotations
                 glRotatef(tf.deg, tf.ax.x, tf.ax.y, tf.ax.z);
             // the unary operator controls if said member is being moved along with it's parent member
-            glTranslatef(-dims.x - mv.x, - dims.y - (selected ? 0.0f : joints[0]->dims.y) - mv.y, 0.0f - mv.z);      // Sets position for rotation
+            glTranslatef(-dims.x - mv.x, - dims.y - ((selected || getParntCurRot().z == 0.0f) ? 0.0f : joints[0]->dims.y) - mv.y, 0.0f - mv.z);      // Sets position for rotation
         } else if(type == "right_arm" || type == "left_arm" || type == "upper_right_leg" || type == "upper_left_leg") {
-            glTranslatef(dims.x + mv.x, dims.y + mv.y, 0.0f + mv.z);                             // Returns to origin
+            glTranslatef(dims.x + mv.x, dims.y + mv.y, 0.0f + mv.z);        // Returns to origin
             for(transformation tf : trns)                                   // Translations
                 glTranslatef(tf.d.x, tf.d.y, tf.d.z);
             for(transformation tf : rots_x)                                 // X axis rotations
@@ -258,8 +262,11 @@ public:
         } else if(this->type.find("arm") != std::string::npos) {
             // Up leaning movement
             if(key == 'i') {
-                if(cur_rotation.x < 360.0f) {
-                    tf = {'r', mv,  360.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
+                if(this->type.find("for") == std::string::npos && cur_rotation.x < 360.0f) {
+                    tf = {'r', mv, 360.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
+                    cur_rotation.x += mv;
+                } else if(this->type.find("for") != std::string::npos && cur_rotation.x < 90.0f) {
+                    tf = {'r', mv, 45.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
                     cur_rotation.x += mv;
                 }
             // Left leaning movement
@@ -280,8 +287,11 @@ public:
                 }
             // Down leaning movement
             } else if(key == 'k') {
-                if(cur_rotation.x > -360.0f) {
+                if(this->type.find("for") == std::string::npos && cur_rotation.x > -360.0f) {
                     tf = {'r', -mv, -360.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
+                    cur_rotation.x -= mv;
+                } else if(this->type.find("for") != std::string::npos && cur_rotation.x > -90.0f) {
+                    tf = {'r', -mv, -180.0f, {1.0, 0.0, 0.0}, {0.0f, 0.0f, 0.0f}};
                     cur_rotation.x -= mv;
                 }
             // Right leaning movement
